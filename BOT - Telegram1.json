@@ -1,0 +1,424 @@
+{
+  "name": "BOT - Telegram1",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1440,
+        240
+      ],
+      "id": "9f78772a-d94c-4f8d-b37d-6065e08bdbb3",
+      "name": "Telegram Trigger",
+      "webhookId": "cc000001-0000-4000-8000-000000000011",
+      "credentials": {
+        "telegramApi": {
+          "id": "jyWnQA6E5HVIo9b0",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------\n// Clasificar: mira que llego y lo etiqueta para el Switch\n// ---------------------------------------------------------------\n\nconst evento = $input.first().json;\n\nconst esBoton = Boolean(evento.callback_query);\nconst mensaje = esBoton ? evento.callback_query.message : evento.message;\n\nconst chatId = mensaje.chat.id;\nconst messageId = mensaje.message_id;\nconst nombre = (esBoton ? evento.callback_query.from.first_name : evento.message.from.first_name) || 'amigo';\n\n// Los botones llevan escondido un dato con la forma TIPO|VALOR\nconst dato = esBoton ? String(evento.callback_query.data || '') : '';\nconst texto = !esBoton ? String(evento.message.text || '').trim() : '';\n\nlet accion = 'DESCONOCIDO';\nlet valor = '';\n\nif (esBoton) {\n  const corte = dato.indexOf('|');\n  accion = corte === -1 ? dato : dato.slice(0, corte);\n  valor = corte === -1 ? '' : dato.slice(corte + 1);\n} else if (texto.toLowerCase().startsWith('/start')) {\n  accion = 'INICIO';\n}\n\nreturn [{\n  json: {\n    accion: accion,\n    valor: valor,\n    chat_id: chatId,\n    message_id: messageId,\n    nombre: nombre,\n    es_boton: esBoton\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1216,
+        240
+      ],
+      "id": "90ec2c7d-6060-4f98-bcba-8e2a9dd0b9df",
+      "name": "Clasificar"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r1",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "INICIO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "inicio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r2",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "CAT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "categoria"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r3",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "MENU",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "volver"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "otro"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -992,
+        240
+      ],
+      "id": "4dc3d15a-4bdc-4686-affa-064d6490e425",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg",
+          "mode": "list",
+          "cachedResultName": "DeliveryBot_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1544510183,
+          "mode": "list",
+          "cachedResultName": "MENU",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit#gid=1544510183"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -720,
+        80
+      ],
+      "id": "26e55337-0641-4718-bbee-29fb070d899d",
+      "name": "Leer MENU",
+      "credentials": {
+        "googleApi": {
+          "id": "tgVnuP5GLg4mD9Kd",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------\n// Armar categorias: pantalla inicial del menu\n// ---------------------------------------------------------------\n\nconst ctx = $('Clasificar').first().json;\n\nconst filas = $input.all()\n  .map(item => item.json)\n  .filter(fila => fila.id_producto)\n  .filter(fila => String(fila.disponible).toUpperCase() === 'TRUE');\n\nconst categorias = [];\nfor (const fila of filas) {\n  const cat = String(fila.categoria || '').trim();\n  if (cat && !categorias.includes(cat)) categorias.push(cat);\n}\n\n// Dos botones por fila para que se lean bien en el celular.\nconst botones = [];\nfor (let i = 0; i < categorias.length; i += 2) {\n  botones.push(categorias.slice(i, i + 2).map(cat => ({\n    text: cat,\n    callback_data: 'CAT|' + cat\n  })));\n}\n\nconst texto = `Hola ${ctx.nombre} 👋\\n\\nBienvenido a nuestra cafetería.\\nElige una categoría:`;\n\nreturn [{\n  json: {\n    chat_id: ctx.chat_id,\n    message_id: ctx.message_id,\n    es_boton: ctx.es_boton,\n    texto: texto,\n    teclado: { inline_keyboard: botones }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        80
+      ],
+      "id": "1177ca5b-f8e4-4087-960a-06eb8ad78f3c",
+      "name": "Armar categorias"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg",
+          "mode": "list",
+          "cachedResultName": "DeliveryBot_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1544510183,
+          "mode": "list",
+          "cachedResultName": "MENU",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit#gid=1544510183"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -720,
+        320
+      ],
+      "id": "6be861eb-2b07-4464-bfc5-fbba06f13ee2",
+      "name": "Leer MENU productos",
+      "credentials": {
+        "googleApi": {
+          "id": "tgVnuP5GLg4mD9Kd",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------\n// Armar productos: lista los productos de la categoria elegida\n// ---------------------------------------------------------------\n\nconst ctx = $('Clasificar').first().json;\nconst categoria = ctx.valor;\n\nconst pesos = v => '$' + Number(v || 0).toLocaleString('es-CO');\n\nconst productos = $input.all()\n  .map(item => item.json)\n  .filter(fila => fila.id_producto)\n  .filter(fila => String(fila.disponible).toUpperCase() === 'TRUE')\n  .filter(fila => String(fila.categoria || '').trim() === categoria);\n\n// Un producto por fila: los nombres son largos y no caben de a dos.\nconst botones = productos.map(p => ([{\n  text: `${p.nombre} · ${pesos(p.precio)}`,\n  callback_data: 'PROD|' + p.id_producto\n}]));\n\nbotones.push([{ text: '← Volver a categorías', callback_data: 'MENU|' }]);\n\nlet texto = `*${categoria}*\\n\\n`;\nif (productos.length === 0) {\n  texto += 'No hay productos disponibles en esta categoría por ahora.';\n} else {\n  texto += productos.map(p => `• *${p.nombre}* — ${pesos(p.precio)}\\n_${p.descripcion || ''}_`).join('\\n\\n');\n  texto += '\\n\\nToca un producto para agregarlo.';\n}\n\nreturn [{\n  json: {\n    chat_id: ctx.chat_id,\n    message_id: ctx.message_id,\n    es_boton: ctx.es_boton,\n    texto: texto,\n    teclado: { inline_keyboard: botones }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        320
+      ],
+      "id": "f639d822-be73-460d-84ad-a5e4bac19cf3",
+      "name": "Armar productos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e1",
+              "leftValue": "={{ $json.es_boton }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -272,
+        80
+      ],
+      "id": "ef834e21-1346-4548-839e-c742e6142d95",
+      "name": "Editar o enviar"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8909357609:AAHHHxXZ9zKXnz443jtdNkZ0FE-IMm5faDk/editMessageText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chat_id, message_id: $json.message_id, text: $json.texto, parse_mode: 'Markdown', reply_markup: $json.teclado }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        240
+      ],
+      "id": "7e2a1fe7-d009-4b15-901d-d37533a657ff",
+      "name": "Editar mensaje",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8909357609:AAHHHxXZ9zKXnz443jtdNkZ0FE-IMm5faDk/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chat_id, text: $json.texto, parse_mode: 'Markdown', reply_markup: $json.teclado }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "44ca315c-e630-452c-a048-b3d972d4c18b",
+      "name": "Enviar mensaje nuevo"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Clasificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificar": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Leer MENU",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Leer MENU productos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Leer MENU",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer MENU": {
+      "main": [
+        [
+          {
+            "node": "Armar categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar categorias": {
+      "main": [
+        [
+          {
+            "node": "Editar o enviar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Editar o enviar": {
+      "main": [
+        [
+          {
+            "node": "Editar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar mensaje nuevo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer MENU productos": {
+      "main": [
+        [
+          {
+            "node": "Armar productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar productos": {
+      "main": [
+        [
+          {
+            "node": "Editar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8c4855d7-4958-4c4e-889e-099cf2fe3ee8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d21989c694f0b44c72b3c624b5174597a023cf492ed652f0e0674e4f52c3354d"
+  },
+  "nodeGroups": [],
+  "id": "BzUMZQQEtN45Fk7C",
+  "tags": []
+}
