@@ -1,0 +1,900 @@
+{
+  "name": "API - DeliveryBot (todos los endpoints)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "menu",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        144,
+        144
+      ],
+      "id": "bcdc394e-affa-4f4f-8b47-911f9de9c6cf",
+      "name": "[menu] Webhook",
+      "webhookId": "912d9578-52d1-435c-9866-022de1741424"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg",
+          "mode": "list",
+          "cachedResultName": "DeliveryBot_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1544510183,
+          "mode": "list",
+          "cachedResultName": "MENU",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit#gid=1544510183"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        144
+      ],
+      "id": "75173f4e-473e-46b9-991e-de7944463ee7",
+      "name": "[menu] Leer MENU",
+      "credentials": {
+        "googleApi": {
+          "id": "tgVnuP5GLg4mD9Kd",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------\n// Solo devolvemos productos disponibles.\n// Un producto agotado sigue existiendo en la hoja (para no romper el\n// historial de pedidos que lo referencian), pero no se le ofrece\n// al cliente.\n// ---------------------------------------------------------------\n\nconst disponibles = $input.all()\n  .map(item => item.json)\n  .filter(fila => fila.id_producto)\n  .filter(fila => String(fila.disponible).trim().toUpperCase() === 'TRUE')\n  .map(fila => ({\n    id_producto: fila.id_producto,\n    nombre: fila.nombre,\n    categoria: fila.categoria,\n    precio: Number(fila.precio) || 0,\n    descripcion: fila.descripcion || '',\n    imagen_url: fila.imagen_url || ''\n  }));\n\nreturn disponibles.map(p => ({ json: p }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        144
+      ],
+      "id": "9133bf4a-da48-4922-a14c-eb5631ca6e9e",
+      "name": "[menu] Filtrar disponibles"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        816,
+        144
+      ],
+      "id": "38c0cb5f-a780-47d5-8774-ec8e6e3c980c",
+      "name": "[menu] Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "path": "pedidos",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        144,
+        448
+      ],
+      "id": "2bd1f4fd-25ce-4480-9a88-3c944e9bde0c",
+      "name": "[pedidos] Webhook",
+      "webhookId": "b7c1e2a3-2222-4b20-8d02-202020202020"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg",
+          "mode": "list",
+          "cachedResultName": "DeliveryBot_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 982714699,
+          "mode": "list",
+          "cachedResultName": "PEDIDOS",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit#gid=982714699"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        448
+      ],
+      "id": "f4443054-64a2-4c08-b0d8-f8cafd11b28f",
+      "name": "[pedidos] Leer PEDIDOS",
+      "credentials": {
+        "googleApi": {
+          "id": "tgVnuP5GLg4mD9Kd",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------\n// Normaliza los pedidos antes de entregarlos al panel.\n// El estado se guarda unificado: en la hoja hay filas viejas escritas\n// a mano como 'en camino' (con espacio) que deben leerse igual que\n// 'en_camino'.\n// ---------------------------------------------------------------\n\nconst normalizar = valor => String(valor || '')\n  .trim()\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/\\s+/g, '_');\n\nconst pedidos = $input.all()\n  .map(item => item.json)\n  .filter(fila => fila.id_pedido)\n  .map(fila => ({\n    id_pedido: fila.id_pedido,\n    chat_id: fila.chat_id,\n    fecha_hora: fila.fecha_hora,\n    items_json: fila.items_json,\n    total: Number(fila.total) || 0,\n    estado: normalizar(fila.estado),\n    notas: fila.notas || ''\n  }));\n\nreturn pedidos.map(p => ({ json: p }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        448
+      ],
+      "id": "2d7e9bd3-b244-419d-99a0-53f4292746f5",
+      "name": "[pedidos] Normalizar pedidos"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        816,
+        448
+      ],
+      "id": "78ab0fba-19c1-451c-82e9-f5f832078869",
+      "name": "[pedidos] Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pedido/crear",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        144,
+        752
+      ],
+      "id": "af141041-c29e-45d6-9aa8-08146021fbe0",
+      "name": "[crear] Webhook",
+      "webhookId": "4a725634-de12-4eff-9625-682133a83887"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg",
+          "mode": "list",
+          "cachedResultName": "DeliveryBot_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1544510183,
+          "mode": "list",
+          "cachedResultName": "MENU",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit#gid=1544510183"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        752
+      ],
+      "id": "c218d787-4c0a-4585-a73c-f79c9c988f33",
+      "name": "[crear] Leer MENU",
+      "credentials": {
+        "googleApi": {
+          "id": "tgVnuP5GLg4mD9Kd",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------\n// Arma el pedido.\n//\n// Decisión de seguridad: el precio NO se toma del cuerpo de la\n// petición, sino de la hoja MENU. De lo contrario, cualquier cliente\n// podría enviar el precio que quisiera. El cuerpo solo aporta qué\n// producto y cuántas unidades.\n// ---------------------------------------------------------------\n\nconst body = $('[crear] Webhook').first().json.body || {};\n\n// --- Validaciones de entrada ---\nif (!body.id_cliente) throw new Error('Falta id_cliente');\nif (!Array.isArray(body.items) || body.items.length === 0) {\n  throw new Error('El pedido no trae items');\n}\n\n// Catálogo indexado por id_producto\nconst catalogo = {};\nfor (const item of $input.all()) {\n  const fila = item.json;\n  if (fila.id_producto) catalogo[String(fila.id_producto)] = fila;\n}\n\n// --- Recalculamos cada línea contra el catálogo ---\nconst items = [];\nlet total = 0;\n\nfor (const linea of body.items) {\n  const id = String(linea.id_producto || '');\n  const producto = catalogo[id];\n\n  if (!producto) throw new Error('Producto inexistente: ' + id);\n  if (String(producto.disponible).trim().toUpperCase() !== 'TRUE') {\n    throw new Error('Producto agotado: ' + producto.nombre);\n  }\n\n  const cantidad = Math.max(1, parseInt(linea.cantidad, 10) || 1);\n  const precio = Number(producto.precio) || 0;\n\n  total += cantidad * precio;\n  items.push({\n    id_producto: id,\n    nombre: producto.nombre,\n    cantidad: cantidad,\n    precio_unitario: precio\n  });\n}\n\n// --- Identificador único ---\nconst idPedido = 'PED-' + Date.now().toString().slice(-8) + '-' + Math.floor(Math.random() * 1000);\n\nconst notas = `Dirección: ${body.direccion_entrega || 'sin dirección'}` +\n  ` | Pago: ${body.metodo_pago || 'efectivo'}` +\n  ` | Cliente: ${body.nombre_cliente || 'sin nombre'}` +\n  ` | Tel: ${body.telefono || 'sin teléfono'}`;\n\nreturn [{ json: {\n  id_pedido: idPedido,\n  chat_id: String(body.id_cliente),\n  fecha_hora: new Date().toISOString(),\n  items_json: JSON.stringify(items),\n  total: total,\n  estado: 'pendiente',\n  notas: notas\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        752
+      ],
+      "id": "785f3d74-ce68-4117-b3ce-2b72577a8075",
+      "name": "[crear] Armar pedido"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg",
+          "mode": "list",
+          "cachedResultName": "DeliveryBot_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 982714699,
+          "mode": "list",
+          "cachedResultName": "PEDIDOS",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit#gid=982714699"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_pedido": "={{ $json.id_pedido }}",
+            "chat_id": "={{ $json.chat_id }}",
+            "fecha_hora": "={{ $json.fecha_hora }}",
+            "items_json": "={{ $json.items_json }}",
+            "total": "={{ $json.total }}",
+            "estado": "={{ $json.estado }}",
+            "notas": "={{ $json.notas }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id_pedido",
+              "displayName": "id_pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_hora",
+              "displayName": "fecha_hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "items_json",
+              "displayName": "items_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total",
+              "displayName": "total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notas",
+              "displayName": "notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        816,
+        752
+      ],
+      "id": "6fda2a5f-9adf-4f35-8352-288f8f5a8039",
+      "name": "[crear] Guardar en PEDIDOS",
+      "credentials": {
+        "googleApi": {
+          "id": "tgVnuP5GLg4mD9Kd",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({ success: true, id_pedido: $('[crear] Armar pedido').first().json.id_pedido, total: $('[crear] Armar pedido').first().json.total, estado: 'pendiente', mensaje: 'Pedido creado correctamente' }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1040,
+        752
+      ],
+      "id": "f4fa701a-bd03-46f3-b612-944a7c9fb885",
+      "name": "[crear] Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pedido/estado",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        144,
+        1152
+      ],
+      "id": "f2d7d0e5-29eb-45a1-ad20-2bfe6662fc3b",
+      "name": "[estado] Webhook",
+      "webhookId": "3a3557a9-417b-4dd6-9b21-abfbf1e55554"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg",
+          "mode": "list",
+          "cachedResultName": "DeliveryBot_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 982714699,
+          "mode": "list",
+          "cachedResultName": "PEDIDOS",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit#gid=982714699"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        1152
+      ],
+      "id": "fd1b3eec-6b81-4330-9145-82a3cb55cdea",
+      "name": "[estado] Leer PEDIDOS",
+      "credentials": {
+        "googleApi": {
+          "id": "tgVnuP5GLg4mD9Kd",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------\n// Busca el pedido y valida el estado solicitado.\n// ---------------------------------------------------------------\n\nconst body = $('[estado] Webhook').first().json.body || {};\nconst idBuscado = String(body.id_pedido || '');\n\nconst ESTADOS = ['pendiente', 'en_preparacion', 'en_camino', 'entregado', 'cancelado'];\n\nconst normalizar = v => String(v || '')\n  .trim().toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/\\s+/g, '_');\n\nconst nuevoEstado = normalizar(body.nuevo_estado);\n\nif (!idBuscado) {\n  return [{ json: { ok: false, motivo: 'Falta id_pedido en la petición' } }];\n}\nif (!ESTADOS.includes(nuevoEstado)) {\n  return [{ json: { ok: false, motivo: 'Estado no válido: ' + body.nuevo_estado } }];\n}\n\nconst encontrado = $input.all().map(i => i.json)\n  .find(fila => String(fila.id_pedido) === idBuscado);\n\nif (!encontrado) {\n  return [{ json: { ok: false, motivo: 'Pedido no encontrado: ' + idBuscado } }];\n}\n\nreturn [{ json: {\n  ok: true,\n  id_pedido: encontrado.id_pedido,\n  chat_id: encontrado.chat_id,\n  estado_anterior: normalizar(encontrado.estado),\n  estado: nuevoEstado\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        1152
+      ],
+      "id": "c21801f1-4a34-47c3-9274-f1de17cf75bc",
+      "name": "[estado] Buscar y validar"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ok1",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        1152
+      ],
+      "id": "c2c96eb4-9255-4f9c-a98e-2b278831f7e8",
+      "name": "[estado] ¿Se encontró?"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg",
+          "mode": "list",
+          "cachedResultName": "DeliveryBot_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 982714699,
+          "mode": "list",
+          "cachedResultName": "PEDIDOS",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aMWT_LT-tXjq9xBkxp86aEXw-SFGmDrUs5i22DwEVwg/edit#gid=982714699"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_pedido": "={{ $json.id_pedido }}",
+            "estado": "={{ $json.estado }}"
+          },
+          "matchingColumns": [
+            "id_pedido"
+          ],
+          "schema": [
+            {
+              "id": "id_pedido",
+              "displayName": "id_pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_hora",
+              "displayName": "fecha_hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "items_json",
+              "displayName": "items_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total",
+              "displayName": "total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notas",
+              "displayName": "notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1040,
+        992
+      ],
+      "id": "c1f560a7-c712-4760-a7bd-49303edcbc11",
+      "name": "[estado] Actualizar estado",
+      "credentials": {
+        "googleApi": {
+          "id": "tgVnuP5GLg4mD9Kd",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------\n// Arma el mensaje que se le notifica al cliente por Telegram según\n// el nuevo estado del pedido.\n// ---------------------------------------------------------------\n\nconst d = $input.first().json;\n\nconst MENSAJES = {\n  en_preparacion: `👨‍🍳 *¡Tu pedido está en preparación!*\\n\\nPedido \\`${d.id_pedido}\\` — ya lo estamos armando.`,\n  en_camino:      `🛵 *¡Tu pedido va en camino!*\\n\\nPedido \\`${d.id_pedido}\\` — está a punto de llegar.`,\n  entregado:      `✅ *¡Pedido entregado!*\\n\\nPedido \\`${d.id_pedido}\\` — que lo disfrutes. ¡Gracias por tu compra! ☕`,\n  cancelado:      `❌ *Pedido cancelado*\\n\\nPedido \\`${d.id_pedido}\\` fue cancelado. Si tienes dudas, escríbenos por este chat.`,\n  pendiente:      `📥 Pedido \\`${d.id_pedido}\\` recibido nuevamente como pendiente.`\n};\n\nreturn [{ json: {\n  chat_id: d.chat_id,\n  texto: MENSAJES[d.estado] || `Tu pedido ${d.id_pedido} cambió de estado a: ${d.estado}`\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        992
+      ],
+      "id": "70d8e8a6-79ad-40ec-8ed9-da2927289a31",
+      "name": "[estado] Armar notificación"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botTU_TOKEN_AQUI/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chat_id, text: $json.texto, parse_mode: 'Markdown' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1488,
+        992
+      ],
+      "id": "b01e4cb6-3905-4638-a51e-cf781bd904b7",
+      "name": "[estado] Notificar cliente",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({ success: true, id_pedido: $('[estado] Actualizar estado').first().json.id_pedido, estado_anterior: $('[estado] Buscar y validar').first().json.estado_anterior, nuevo_estado: $('[estado] Actualizar estado').first().json.estado, mensaje: 'Estado actualizado correctamente' }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1712,
+        992
+      ],
+      "id": "bd2cf62f-43d0-45f0-9c55-eb19e7b98238",
+      "name": "[estado] Responder OK"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({ success: false, mensaje: $json.motivo }) }}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1040,
+        1312
+      ],
+      "id": "3a34f208-e9ec-4a71-9917-aedc3784bdbe",
+      "name": "[estado] Responder error"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "[menu] Webhook": {
+      "main": [
+        [
+          {
+            "node": "[menu] Leer MENU",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[menu] Leer MENU": {
+      "main": [
+        [
+          {
+            "node": "[menu] Filtrar disponibles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[menu] Filtrar disponibles": {
+      "main": [
+        [
+          {
+            "node": "[menu] Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[pedidos] Webhook": {
+      "main": [
+        [
+          {
+            "node": "[pedidos] Leer PEDIDOS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[pedidos] Leer PEDIDOS": {
+      "main": [
+        [
+          {
+            "node": "[pedidos] Normalizar pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[pedidos] Normalizar pedidos": {
+      "main": [
+        [
+          {
+            "node": "[pedidos] Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[crear] Webhook": {
+      "main": [
+        [
+          {
+            "node": "[crear] Leer MENU",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[crear] Leer MENU": {
+      "main": [
+        [
+          {
+            "node": "[crear] Armar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[crear] Armar pedido": {
+      "main": [
+        [
+          {
+            "node": "[crear] Guardar en PEDIDOS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[crear] Guardar en PEDIDOS": {
+      "main": [
+        [
+          {
+            "node": "[crear] Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[estado] Webhook": {
+      "main": [
+        [
+          {
+            "node": "[estado] Leer PEDIDOS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[estado] Leer PEDIDOS": {
+      "main": [
+        [
+          {
+            "node": "[estado] Buscar y validar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[estado] Buscar y validar": {
+      "main": [
+        [
+          {
+            "node": "[estado] ¿Se encontró?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[estado] ¿Se encontró?": {
+      "main": [
+        [
+          {
+            "node": "[estado] Actualizar estado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[estado] Responder error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[estado] Actualizar estado": {
+      "main": [
+        [
+          {
+            "node": "[estado] Armar notificación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[estado] Armar notificación": {
+      "main": [
+        [
+          {
+            "node": "[estado] Notificar cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[estado] Notificar cliente": {
+      "main": [
+        [
+          {
+            "node": "[estado] Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f5d255ce-4906-49ad-9ab1-512a8c2a3f9a",
+  "meta": {
+    "instanceId": "d21989c694f0b44c72b3c624b5174597a023cf492ed652f0e0674e4f52c3354d"
+  },
+  "nodeGroups": [],
+  "id": "yq1omNpJ7Bt7Z4DK",
+  "tags": []
+}
